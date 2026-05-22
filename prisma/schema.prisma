@@ -1,0 +1,251 @@
+// Spa CRM - reverse-engineered from Tyra Mom & Baby Spa pattern
+// Service-business CRM with WA AI agent + handoff queue
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  receptionist
+  therapist
+}
+
+enum AppointmentStatus {
+  pending
+  confirmed
+  in_progress
+  completed
+  cancelled
+  no_show
+}
+
+enum PaymentMethod {
+  cash
+  card
+  transfer
+  qris
+}
+
+enum TransactionStatus {
+  unpaid
+  partial
+  paid
+  refunded
+  cancelled
+}
+
+enum WaDirection {
+  in
+  out
+}
+
+enum WaSource {
+  ai_agent
+  human
+  system
+}
+
+enum HandoffStatus {
+  pending
+  active
+  resolved
+  expired
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(receptionist)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Customer {
+  id              String   @id @default(cuid())
+  name            String
+  phone           String   @unique
+  normalizedPhone String   @unique
+  email           String?
+  birthDate       DateTime?
+  address         String?
+  skinType        String?
+  allergies       String?
+  notes           String?
+  // abuse tracking
+  dailyMessageCount Int      @default(0)
+  dailyTokenCost    Float    @default(0)
+  abuseFlags        Int      @default(0)
+  mutedUntil        DateTime?
+  lastResetAt       DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  appointments Appointment[]
+  waMessages   WaMessage[]
+  handoffs     Handoff[]
+
+  @@index([normalizedPhone])
+}
+
+model Service {
+  id              String   @id @default(cuid())
+  name            String
+  category        String   // baby, mom, combo, custom
+  durationMinutes Int
+  price           Decimal  @db.Decimal(12, 2)
+  description     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  appointments Appointment[]
+}
+
+model Therapist {
+  id             String   @id @default(cuid())
+  name           String
+  phone          String?
+  specialization String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  appointments Appointment[]
+}
+
+model Appointment {
+  id          String            @id @default(cuid())
+  customerId  String
+  serviceId   String
+  therapistId String?
+  scheduledAt DateTime
+  endsAt      DateTime?
+  status      AppointmentStatus @default(pending)
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  customer    Customer    @relation(fields: [customerId], references: [id])
+  service     Service     @relation(fields: [serviceId], references: [id])
+  therapist   Therapist?  @relation(fields: [therapistId], references: [id])
+  transaction Transaction?
+
+  @@index([customerId])
+  @@index([scheduledAt])
+  @@index([status])
+}
+
+model Transaction {
+  id            String            @id @default(cuid())
+  appointmentId String            @unique
+  subtotal      Decimal           @db.Decimal(12, 2)
+  discount      Decimal           @default(0) @db.Decimal(12, 2)
+  tax           Decimal           @default(0) @db.Decimal(12, 2)
+  total         Decimal           @db.Decimal(12, 2)
+  paymentMethod PaymentMethod?
+  paidAt        DateTime?
+  status        TransactionStatus @default(unpaid)
+  // Midtrans QRIS fields
+  midtransOrderId      String?  @unique
+  midtransTxnId        String?
+  midtransQrString     String?  @db.Text
+  midtransQrUrl        String?  @db.Text
+  midtransExpiresAt    DateTime?
+  midtransLastStatus   String?
+  midtransRawNotif     Json?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+
+  @@index([status])
+  @@index([paidAt])
+  @@index([midtransOrderId])
+}
+
+model WaMessage {
+  id              String      @id @default(cuid())
+  customerId      String?
+  normalizedPhone String
+  remoteJid       String?
+  waMessageId     String?     @unique
+  direction       WaDirection
+  source          WaSource    @default(human)
+  messageType     String      @default("text")
+  content         String      @db.Text
+  sentAt          DateTime    @default(now())
+  status          String      @default("pending") // sent, delivered, read, failed
+  waStatus        Int?
+  statusUpdatedAt DateTime?
+  // AI metadata
+  aiTokensIn      Int?
+  aiTokensOut     Int?
+  aiCostUsd       Float?
+  aiBlocked       Boolean     @default(false)
+  aiBlockReason   String?
+
+  customer Customer? @relation(fields: [customerId], references: [id])
+
+  @@index([normalizedPhone])
+  @@index([customerId])
+  @@index([sentAt])
+}
+
+model Handoff {
+  id              String        @id @default(cuid())
+  customerId      String
+  normalizedPhone String
+  reason          String
+  triggerKeyword  String?
+  status          HandoffStatus @default(pending)
+  takenBy         String?
+  takenAt         DateTime?
+  resolvedAt      DateTime?
+  notes           String?
+  createdAt       DateTime      @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([status])
+}
+
+model Settings {
+  id                          Int      @id @default(1)
+  businessName                String   @default("Spa CRM")
+  address                     String?
+  phone                       String?
+  email                       String?
+  waNumber                    String?
+  logoUrl                     String?
+  qrisImageUrl                String?
+  bookingPaymentInstructions  String?  @db.Text
+  pendingPaymentExpiryMinutes Int      @default(120)
+  // AI config
+  aiModel                String   @default("GG")
+  aiBaseUrl              String   @default("http://127.0.0.1:20128/v1")
+  aiKnowledgeBase        String?  @db.Text
+  aiSafetyRules          String?  @db.Text
+  aiHandoffKeywords      String[] @default([])
+  aiAllowedTopics        String[] @default([])
+  aiOffTopicReply        String   @default("Maaf, gue cuma bantu seputar layanan & booking. Kalau butuh info lain, hubungi staff ya.")
+  aiMaxOutputTokens      Int      @default(300)
+  patternsJson           Json?
+  // Abuse limits
+  abuseDailyMsgPerPhone  Int      @default(30)
+  abuseDailyCostPerPhone Float    @default(0.05)
+  abuseGlobalDailyBudget Float    @default(5.0)
+  abuseFlagThreshold     Int      @default(3)
+  // Telemetry
+  globalDailyCost        Float    @default(0)
+  globalCostResetAt      DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
