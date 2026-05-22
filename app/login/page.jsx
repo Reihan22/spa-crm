@@ -27,7 +27,7 @@ export default function LoginPage() {
       <form onSubmit={submit} className="bg-white rounded-3xl shadow-soft p-8 w-full max-w-sm border border-blush">
         <div className="mb-6 text-center">
           <div className="w-12 h-12 mx-auto rounded-2xl bg-primary text-white grid place-items-center font-bold mb-2">R</div>
-          <h1 className="text-xl font-bold text-ink" style={{ fontFamily: "'Playfair Display', serif" }}>Reihan Spa CRM</h1>
+          <h1 className="text-xl font-bold text-ink" style={{ fontFamily: "'Playfair Display', serif" }}>Rspa CRM</h1>
           <p className="text-xs text-muted">Login untuk lanjut</p>
         </div>
         <label className="block text-xs font-semibold text-muted mb-1">Email</label>

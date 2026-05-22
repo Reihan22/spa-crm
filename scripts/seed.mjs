@@ -16,13 +16,13 @@ async function main() {
     update: {},
     create: {
       id: 1,
-      businessName: 'Reihan Spa',
+      businessName: 'Rspa',
       address: 'Jakarta, Indonesia',
       phone: '021-0000000',
       email: 'cs@spa.reihan.site',
       waNumber: '6281234567890',
       bookingPaymentInstructions: 'Untuk amankan slot, lakukan DP via QRIS atau transfer. Kirim bukti pembayaran di chat ini.',
-      aiKnowledgeBase: `LAYANAN & SOP REIHAN SPA
+      aiKnowledgeBase: `LAYANAN & SOP RSPA
 - Spa untuk dewasa: relaksasi, therapeutic, body scrub, facial.
 - Treatment dilakukan oleh terapis bersertifikat.
 - Customer wajib jujur soal kondisi medis (alergi, hamil, luka, operasi).
@@ -37,7 +37,7 @@ async function main() {
 `,
       aiHandoffKeywords: ['demam','kejang','sesak','muntah','dehidrasi','alergi','luka','infeksi','operasi','komplain','refund','marah','kecewa','tipu'],
       aiAllowedTopics: ['layanan','harga','jadwal','booking','reschedule','cancel','lokasi','pembayaran','terapis','durasi','paket','promo'],
-      aiOffTopicReply: 'Maaf, saya hanya bantu seputar layanan & booking Reihan Spa ya. Untuk hal lain, silakan hubungi staff kami langsung.',
+      aiOffTopicReply: 'Maaf, saya hanya bantu seputar layanan & booking Rspa ya. Untuk hal lain, silakan hubungi staff kami langsung.',
       aiMaxOutputTokens: 280,
       abuseDailyMsgPerPhone: 30,
       abuseDailyCostPerPhone: 0.05,

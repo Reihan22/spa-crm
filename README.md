@@ -1,4 +1,4 @@
-# Reihan Spa CRM
+# Rspa CRM
 
 WhatsApp-first AI CRM untuk operasional spa di Indonesia. Customer chat ke nomor bisnis lewat WhatsApp, AI auto-reply, booking dibuatkan otomatis, QRIS dikirim, konfirmasi pembayaran masuk balik ke chat. Admin punya web UI buat handover ke human, kelola customer, jadwal, transaksi, dan tweak intent router/knowledge base.
 

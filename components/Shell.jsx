@@ -35,7 +35,7 @@ export function Sidebar() {
       <div className="px-5 py-6 border-b border-blush flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-primary text-white grid place-items-center font-bold shadow-soft">R</div>
         <div>
-          <h1 className="text-base font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Reihan Spa</h1>
+          <h1 className="text-base font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Rspa</h1>
           <p className="text-[11px] text-muted">CRM &amp; WA AI Agent</p>
         </div>
       </div>

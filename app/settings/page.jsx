@@ -164,7 +164,7 @@ function SettingsForm({ tab }) {
           <p className="text-[11px] text-muted mb-3">Ini yang AI tahu tentang bisnis lu. Tulis natural aja — SOP, harga, menu, kebijakan, jam operasional, dll. Semakin detail, semakin akurat jawaban AI.</p>
           <Field label="SOP, layanan, harga, kebijakan" hint={`${(s.aiKnowledgeBase || '').length} karakter · ~${Math.ceil((s.aiKnowledgeBase || '').length / 4)} tokens`}>
             <Textarea rows={10} value={s.aiKnowledgeBase || ''} onChange={e => set('aiKnowledgeBase', e.target.value)}
-              className="font-mono text-xs leading-relaxed" placeholder={"Contoh:\nReihan Spa buka setiap hari 10:00-22:00\n\nLayanan & harga:\n- Swedish Massage 60min: Rp150.000\n- Body Scrub 45min: Rp120.00n- Couple Package 90min: Rp350.000\n\nKebijakan:\n- Booking minimal 1 jam sebelum jadwal\n- DP 50% via QRIS\n- Pembatalan <2 jam sebelum = DP hangus"} />
+              className="font-mono text-xs leading-relaxed" placeholder={"Contoh:\nRspa buka setiap hari 10:00-22:00\n\nLayanan & harga:\n- Swedish Massage 60min: Rp150.000\n- Body Scrub 45min: Rp120.00n- Couple Package 90min: Rp350.000\n\nKebijakan:\n- Booking minimal 1 jam sebelum jadwal\n- DP 50% via QRIS\n- Pembatalan <2 jam sebelum = DP hangus"} />
           </Field>
         </section>
 
