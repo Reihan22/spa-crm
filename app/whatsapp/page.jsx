@@ -168,8 +168,10 @@ function Body() {
       const r = await api(`/api/wa/messages?phone=${encodeURIComponent(phone)}&size=100`);
       setChatMsgs((r.items || []).reverse());
       setChatTotal(r.total || 0);
-      // Clear unread
+      // Clear unread locally
       setConvos(prev => prev.map(c => c.phone === phone ? { ...c, unread: 0 } : c));
+      // Mark read on server (fire-and-forget)
+      api('/api/wa/read', { method: 'POST', body: JSON.stringify({ phone }) }).catch(() => {});
       // Load customer info
       const conv = convos.find(c => c.phone === phone);
       setActiveCustomer(conv?.customer || null);

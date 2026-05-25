@@ -94,6 +94,8 @@ model Customer {
   isActive        Boolean    @default(true)
   // AI toggle per-customer
   aiEnabled        Boolean  @default(true)
+  // Read tracking
+  lastReadAt       DateTime?
   // abuse tracking
   dailyMessageCount Int      @default(0)
   dailyTokenCost    Float    @default(0)

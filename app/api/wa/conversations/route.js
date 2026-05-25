@@ -44,15 +44,14 @@ export async function GET(req) {
     });
     const customer = await prisma.customer.findFirst({
       where: { phone: row.normalizedPhone },
-      select: { id: true, name: true, tags: true, totalBookings: true, totalSpent: true, lastVisit: true, aiEnabled: true },
+      select: { id: true, name: true, tags: true, totalBookings: true, totalSpent: true, lastVisit: true, aiEnabled: true, lastReadAt: true },
     });
-    // Count recent inbound (last 5 min) as "unread"
-    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+    // Count inbound messages AFTER lastReadAt as unread (not time-based)
     const unread = await prisma.waMessage.count({
       where: {
         normalizedPhone: row.normalizedPhone,
         direction: 'in',
-        sentAt: { gte: fiveMinAgo },
+        ...(customer?.lastReadAt ? { sentAt: { gt: customer.lastReadAt } } : {}),
       },
     });
     return {
