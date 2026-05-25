@@ -54,7 +54,7 @@ export async function GET(req) {
     prisma.appointment.findMany({
       where, orderBy: { scheduledAt: 'desc' },
       skip: (page - 1) * size, take: size,
-      include: { customer: true, service: true, therapist: true, transaction: true },
+      include: { customer: true, service: true, therapist: true, transactions: true },
     }),
     prisma.appointment.count({ where }),
   ]);

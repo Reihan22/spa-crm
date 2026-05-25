@@ -212,7 +212,7 @@ async function executeQrisIntent({ customer, normalized, remote_jid, qrisRequest
         type: 'png', width: 512, margin: 2, errorCorrectionLevel: 'M',
       });
       // Send QR as image via worker
-      const text = `Booking dicatat ✅\nLayanan: ${svc.name}${partyLine}\nJadwal: ${fmt}\nTotal: Rp ${total}\n\nSilakan scan QRIS di atas untuk membayar.\nBerlaku 15 menit. Setelah dibayar, kakak akan dapat konfirmasi otomatis.`;
+      const text = `Booking dicatat ✅\nLayanan: ${svc.name}${partyLine}\nJadwal: ${fmt}\nTotal: Rp ${total}\n\nSilakan scan QRIS di atas untuk membayar.\nBerlaku 15 menit. Setelah dibayar, mohon kirim bukti pembayaran (screenshot) ya kak 🙏`;
       await sendImageDirect(normalized, remote_jid, qrBuffer, text);
       return { reply: text };
     } catch (e) {
@@ -243,7 +243,7 @@ async function executeQrisIntent({ customer, normalized, remote_jid, qrisRequest
     await sendDirect(normalized, remote_jid, m);
     return { reply: m };
   }
-  const text = `Booking dicatat ✅\nLayanan: ${svc.name}${partyLine}\nJadwal: ${fmt}\nTotal: Rp ${total}\n\nSilakan bayar via QRIS:\n${charge.qrUrl}\n\nBerlaku 15 menit. Setelah dibayar, kakak akan dapat konfirmasi otomatis.`;
+  const text = `Booking dicatat ✅\nLayanan: ${svc.name}${partyLine}\nJadwal: ${fmt}\nTotal: Rp ${total}\n\nSilakan bayar via QRIS:\n${charge.qrUrl}\n\nBerlaku 15 menit. Setelah dibayar, mohon kirim bukti pembayaran (screenshot) ya kak 🙏`;
   await sendDirect(normalized, remote_jid, text);
   return { reply: text };
 }
