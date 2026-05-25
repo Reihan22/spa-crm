@@ -1,4 +1,5 @@
 // POST /api/wa/send — staff sends manual message via worker
+// For @lid customers: looks up last inbound remoteJid and passes to worker.
 import { jsonOk, jsonError, prisma, normalizePhone } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 
@@ -12,20 +13,30 @@ export async function POST(req) {
   if (!phone || !content) return jsonError('phone & content required', 400);
   const normalized = normalizePhone(phone);
   try {
+    // Look up customer + last inbound remoteJid for @lid support
+    const customer = await prisma.customer.findUnique({ where: { normalizedPhone: normalized } });
+    let lastRemoteJid = null;
+    if (customer) {
+      const lastInbound = await prisma.waMessage.findFirst({
+        where: { customerId: customer.id, direction: 'in', remoteJid: { not: null } },
+        orderBy: { sentAt: 'desc' },
+        select: { remoteJid: true },
+      });
+      lastRemoteJid = lastInbound?.remoteJid || null;
+    }
     const r = await fetch(WORKER_BASE + '/send', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-worker-token': WORKER_TOKEN },
-      body: JSON.stringify({ phone: normalized, content }),
+      body: JSON.stringify({ phone: normalized, content, remote_jid: lastRemoteJid }),
     });
     if (!r.ok) return jsonError('Worker send failed', 502, { detail: await r.text() });
     const data = await r.json();
     // Persist outgoing message
-    let customer = await prisma.customer.findUnique({ where: { normalizedPhone: normalized } });
     await prisma.waMessage.create({
       data: {
-        customerId: customer?.id || null,
+        customer: customer?.id ? { connect: { id: customer.id } } : undefined,
         normalizedPhone: normalized,
-        remoteJid: data.remote_jid || null,
+        remoteJid: data.remote_jid || lastRemoteJid || null,
         waMessageId: data.wa_message_id || null,
         direction: 'out',
         source: 'human',

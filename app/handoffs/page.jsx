@@ -68,13 +68,13 @@ function Body() {
           const Icon = t.icon;
           return (
             <button key={t.key} onClick={() => setFilter(t.key)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition ${filter === t.key ? 'bg-primary text-white shadow-soft' : 'bg-white text-muted hover:bg-blush border border-blush'}`}>
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-medium transition ${filter === t.key ? 'bg-primary text-white shadow' : 'bg-card text-muted hover:bg-surface border border-border'}`}>
               {Icon && <Icon className="w-3.5 h-3.5" />}
               {t.label}
             </button>
           );
         })}
-        <button onClick={() => setShowFilter(!showFilter)} className={`ml-auto p-2 rounded-xl border transition ${showFilter ? 'border-primary bg-blush text-primary' : 'border-blush bg-white hover:bg-cream text-muted'}`}>
+        <button onClick={() => setShowFilter(!showFilter)} className={`ml-auto p-2 rounded-md border transition ${showFilter ? 'border-primary bg-surface text-primary' : 'border-border bg-card hover:bg-surface text-muted'}`}>
           <Filter className="w-4 h-4" />
         </button>
       </div>
@@ -85,15 +85,15 @@ function Body() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="col-span-2">
               <label className="text-[11px] text-muted font-medium uppercase tracking-wide mb-1 block">Cari</label>
-              <input value={q} onChange={e => setQ(e.target.value)} placeholder="Nomor / alasan / nama…" className="w-full px-3 py-2 rounded-xl border border-blush bg-white text-sm focus:border-primary outline-none" />
+              <input value={q} onChange={e => setQ(e.target.value)} placeholder="Nomor / alasan / nama…" className="w-full px-3 py-2 rounded-md border border-border bg-card text-sm focus:border-primary outline-none" />
             </div>
             <div>
               <label className="text-[11px] text-muted font-medium uppercase tracking-wide mb-1 block">Dari</label>
-              <input type="datetime-local" value={from} onChange={e => setFrom(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-blush bg-white text-sm focus:border-primary outline-none" />
+              <input type="datetime-local" value={from} onChange={e => setFrom(e.target.value)} className="w-full px-3 py-2 rounded-md border border-border bg-card text-sm focus:border-primary outline-none" />
             </div>
             <div>
               <label className="text-[11px] text-muted font-medium uppercase tracking-wide mb-1 block">Sampai</label>
-              <input type="datetime-local" value={to} onChange={e => setTo(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-blush bg-white text-sm focus:border-primary outline-none" />
+              <input type="datetime-local" value={to} onChange={e => setTo(e.target.value)} className="w-full px-3 py-2 rounded-md border border-border bg-card text-sm focus:border-primary outline-none" />
             </div>
           </div>
           {hasFilters && (
@@ -120,10 +120,10 @@ function Body() {
               </div>
             </div>
             <p className="text-sm mt-2 text-ink/80"><span className="text-muted">Alasan:</span> {h.reason}</p>
-            {h.triggerKeyword && <p className="text-xs text-muted mt-1">Trigger: <code className="bg-cream px-1.5 py-0.5 rounded text-primary">{h.triggerKeyword}</code></p>}
+            {h.triggerKeyword && <p className="text-xs text-muted mt-1">Trigger: <code className="bg-surface px-1.5 py-0.5 rounded text-primary">{h.triggerKeyword}</code></p>}
             <div className="mt-3 flex flex-wrap gap-2">
               {h.status === 'pending' && <Btn onClick={() => update(h.id, 'active')} className="text-xs py-1.5">Take over</Btn>}
-              {h.status !== 'resolved' && <button onClick={() => { const n = prompt('Catatan resolusi (opsional)'); update(h.id, 'resolved', n || undefined); }} className="px-4 py-1.5 rounded-xl bg-emerald-100 text-emerald-700 text-xs font-medium hover:bg-emerald-200 transition">Tandai selesai</button>}
+              {h.status !== 'resolved' && <button onClick={() => { const n = prompt('Catatan resolusi (opsional)'); update(h.id, 'resolved', n || undefined); }} className="px-4 py-1.5 rounded-md bg-emerald-100 text-emerald-700 text-xs font-medium hover:bg-emerald-200 transition">Tandai selesai</button>}
             </div>
           </Card>
         ))}
@@ -137,8 +137,8 @@ function Body() {
         <Card className="flex flex-wrap gap-2 justify-between items-center">
           <span className="text-xs text-muted">{total} handoff ditampilkan</span>
           <div className="flex gap-2">
-            {filter !== 'all' && <button onClick={delByStatus} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs text-orange-600 hover:bg-orange-50 border border-orange-200 transition"><Trash2 className="w-3 h-3" /> Hapus status "{filter}"</button>}
-            <button onClick={delAll} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs text-rose-600 hover:bg-rose-50 border border-rose-200 transition"><Trash2 className="w-3 h-3" /> Hapus semua</button>
+            {filter !== 'all' && <button onClick={delByStatus} className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-orange-600 hover:bg-orange-50 border border-orange-200 transition"><Trash2 className="w-3 h-3" /> Hapus status "{filter}"</button>}
+            <button onClick={delAll} className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-rose-600 hover:bg-rose-50 border border-rose-200 transition"><Trash2 className="w-3 h-3" /> Hapus semua</button>
           </div>
         </Card>
       )}

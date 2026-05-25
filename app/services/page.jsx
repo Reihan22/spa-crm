@@ -19,7 +19,7 @@ function Body() {
           <Btn onClick={() => { setEdit(null); setOpen(true); }}>+ Tambah</Btn></div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {items.map(s => (
-            <button key={s.id} onClick={() => { setEdit(s); setOpen(true); }} className="text-left p-4 rounded-xl border border-blush hover:border-primary bg-white">
+            <button key={s.id} onClick={() => { setEdit(s); setOpen(true); }} className="text-left p-4 rounded-md border border-border hover:border-primary bg-card">
               <div className="flex justify-between"><h3 className="font-semibold text-ink">{s.name}</h3><Badge color={s.isActive?'green':'gray'}>{s.isActive?'Aktif':'Nonaktif'}</Badge></div>
               <p className="text-xs text-muted capitalize">{s.category} · {s.durationMinutes} menit</p>
               <p className="text-sm font-semibold text-primary mt-1">{formatRupiah(s.price)}</p>
@@ -57,7 +57,7 @@ function Modal({ initial, onClose, onSaved }) {
   }
   return (
     <div className="fixed inset-0 bg-black/40 grid place-items-center z-50 p-4" onClick={onClose}>
-      <form onClick={e=>e.stopPropagation()} onSubmit={submit} className="bg-white rounded-2xl p-6 w-full max-w-lg space-y-3">
+      <form onClick={e=>e.stopPropagation()} onSubmit={submit} className="bg-card rounded-lg p-6 w-full max-w-lg space-y-3">
         <h3 className="font-semibold text-lg">{isEdit?'Edit':'Tambah'} Layanan</h3>
         <div><label className="text-xs text-muted">Nama</label><Input required value={form.name} onChange={e=>set('name',e.target.value)} /></div>
         <div className="grid grid-cols-2 gap-3">
@@ -72,7 +72,7 @@ function Modal({ initial, onClose, onSaved }) {
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isActive} onChange={e=>set('isActive',e.target.checked)} />Aktif</label>
         {err && <p className="text-sm text-rose-600">{err}</p>}
         <div className="flex justify-between"><Btn disabled={busy}>{busy?'…':'Simpan'}</Btn>
-          {isEdit && <button type="button" onClick={del} className="px-4 py-2 rounded-xl bg-rose-100 text-rose-700 text-sm">Hapus</button>}</div>
+          {isEdit && <button type="button" onClick={del} className="px-4 py-2 rounded-md bg-rose-100 text-rose-700 text-sm">Hapus</button>}</div>
       </form>
     </div>
   );

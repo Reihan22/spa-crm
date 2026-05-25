@@ -1,9 +1,10 @@
-// POST /api/wa/ingest — INTERNAL endpoint called by Baileys worker on inbound message
-// Pipeline: persist inbound → abuse preflight → AI agent → record cost → if reply, persist + ask worker to send
+// Header doc: POST /api/wa/ingest — INTERNAL endpoint called by Baileys worker on inbound message.
+// Pipeline: persist inbound → abuse preflight → LLM agent (with tool loop) → record cost → if reply, persist + ask worker to send
+// LLM handles all classification + data fetching via function calling tools.
+
 import { prisma, jsonOk, jsonError, normalizePhone } from '@/lib/db';
 import { requireInternal } from '@/lib/auth';
 import { getSettings, preflightAbuseCheck, callAgent, recordCost } from '@/lib/ai-agent';
-import { routeIntent } from '@/lib/intent-router';
 
 const WORKER_BASE = `http://127.0.0.1:${process.env.WA_WORKER_PORT || 3011}`;
 const WORKER_TOKEN = process.env.WA_WORKER_TOKEN;
@@ -32,7 +33,7 @@ export async function POST(req) {
   // Persist inbound message
   await prisma.waMessage.create({
     data: {
-      customerId: customer.id,
+      customer: { connect: { id: customer.id } },
       normalizedPhone: normalized,
       remoteJid: remote_jid || null,
       waMessageId: wa_message_id || null,
@@ -44,25 +45,24 @@ export async function POST(req) {
     },
   });
 
+  // Refresh customer to get aiEnabled flag
+  customer = await prisma.customer.findUnique({ where: { id: customer.id } });
+
+  // AI disabled for this customer — persist inbound but skip AI call
+  if (!customer.aiEnabled) {
+    return jsonOk({ ok: true, handled: false, reason: 'ai_disabled' });
+  }
+
   // Settings + abuse preflight
   const settings = await getSettings();
   const pre = await preflightAbuseCheck({ customer, message: content, settings });
 
-  // If active handoff exists, do not auto-reply (human is taking over)
-  const activeHandoff = await prisma.handoff.findFirst({ where: { customerId: customer.id, status: { in: ['pending','active'] } } });
-
   if (!pre.allowed) {
-    // Reply with template, do not call LLM
     await persistAndSend({ customer, normalized, remote_jid, reply: pre.reply, source: 'system', blocked: true, blockReason: pre.reason });
     return jsonOk({ ok: true, blocked: true, reason: pre.reason });
   }
 
-  // if (activeHandoff) {
-  //   // Pause AI; just save inbound, owner notified via /handoffs UI
-  //   return jsonOk({ ok: true, paused: 'handoff_active' });
-  // }
-
-  // Recent context
+  // Recent context + services (for system prompt + create_qris_payment validation)
   const recent = await prisma.waMessage.findMany({
     where: { customerId: customer.id },
     orderBy: { sentAt: 'desc' },
@@ -71,50 +71,7 @@ export async function POST(req) {
   recent.reverse();
   const services = await prisma.service.findMany({ where: { isActive: true } });
 
-  // ───────────────────────────────────────────────────────────────────
-  // Deterministic intent router — handle common cases with 0 LLM tokens.
-  // Falls through to LLM only when genuinely ambiguous.
-  // ───────────────────────────────────────────────────────────────────
-  const routed = routeIntent({ message: content, settings, services, recentMessages: recent });
-  if (routed.handled) {
-    let routedReply = routed.reply || '';
-    let alreadySentRouted = false;
-    if (routed.qrisRequest) {
-      const qrisOutcome = await executeQrisIntent({
-        customer, normalized, remote_jid,
-        qrisRequest: routed.qrisRequest, services,
-      });
-      if (qrisOutcome.reply) routedReply = qrisOutcome.reply;
-      alreadySentRouted = true;
-      await prisma.waMessage.create({
-        data: {
-          customerId: customer.id,
-          normalizedPhone: normalized,
-          remoteJid: remote_jid || null,
-          direction: 'out',
-          source: 'ai_agent',
-          content: routedReply,
-          status: 'sent',
-        },
-      });
-    }
-    if (routed.escalateInfo) {
-      await prisma.handoff.create({
-        data: {
-          customerId: customer.id,
-          normalizedPhone: normalized,
-          reason: routed.escalateInfo.reason || 'Routed escalate',
-          triggerKeyword: routed.escalateInfo.keyword || null,
-          status: 'pending',
-        },
-      });
-    }
-    if (!alreadySentRouted && routedReply) {
-      await persistAndSend({ customer, normalized, remote_jid, reply: routedReply, source: 'ai_agent' });
-    }
-    return jsonOk({ ok: true, reply: routedReply, routed: true, tokens: 0 });
-  }
-
+  // ── LLM agent (tool execution loop) ────────────────────────────────
   let reply, escalateInfo, usage, identityUpdate, qrisRequest;
   try {
     const out = await callAgent({ customer, message: content, settings, services, recentMessages: recent });
@@ -155,7 +112,7 @@ export async function POST(req) {
       // Persist outbound log without re-sending
       await prisma.waMessage.create({
         data: {
-          customerId: customer.id,
+          customer: { connect: { id: customer.id } },
           normalizedPhone: normalized,
           remoteJid: remote_jid || null,
           direction: 'out',
@@ -180,10 +137,9 @@ export async function POST(req) {
   if (escalateInfo || pre.handoffHit) {
     await prisma.handoff.create({
       data: {
-        customerId: customer.id,
-        normalizedPhone: normalized,
+        customer: { connect: { id: customer.id } },
+        sessionId: `handoff-${normalized}-${Date.now()}`,
         reason: escalateInfo?.reason || `Keyword match: ${pre.handoffHit}`,
-        triggerKeyword: escalateInfo?.keyword || pre.handoffHit || null,
         status: 'pending',
       },
     });
@@ -209,7 +165,7 @@ async function executeQrisIntent({ customer, normalized, remote_jid, qrisRequest
   }
   let when;
   try { when = new Date(qrisRequest.scheduled_at); if (isNaN(when.getTime())) throw 0; }
-  catch { 
+  catch {
     const m = `Format jadwal belum bener kak. Tolong sebut tanggal & jam (contoh: besok jam 14:00).`;
     await sendDirect(normalized, remote_jid, m);
     return { reply: m };
@@ -223,7 +179,7 @@ async function executeQrisIntent({ customer, normalized, remote_jid, qrisRequest
   ].filter(Boolean).join(' • ') || null;
   const appt = await prisma.appointment.create({
     data: {
-      customerId: customer.id,
+      customer: { connect: { id: customer.id } },
       serviceId: svc.id,
       scheduledAt: when,
       endsAt: ends,
@@ -266,15 +222,7 @@ async function executeQrisIntent({ customer, normalized, remote_jid, qrisRequest
   const fmt = when.toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Asia/Jakarta' });
   const total = Number(totalPrice).toLocaleString('id-ID');
   const partyLine = partySize > 1 ? `\nJumlah orang: ${partySize} (Rp ${Number(svc.price).toLocaleString('id-ID')} × ${partySize})` : '';
-  const text = `Booking dicatat ✅
-Layanan: ${svc.name}${partyLine}
-Jadwal: ${fmt}
-Total: Rp ${total}
-
-Silakan bayar via QRIS:
-${charge.qrUrl}
-
-Berlaku 15 menit. Setelah dibayar, kakak akan dapat konfirmasi otomatis.`;
+  const text = `Booking dicatat ✅\nLayanan: ${svc.name}${partyLine}\nJadwal: ${fmt}\nTotal: Rp ${total}\n\nSilakan bayar via QRIS:\n${charge.qrUrl}\n\nBerlaku 15 menit. Setelah dibayar, kakak akan dapat konfirmasi otomatis.`;
   await sendDirect(normalized, remote_jid, text);
   return { reply: text };
 }
@@ -302,7 +250,7 @@ async function persistAndSend({ customer, normalized, remote_jid, reply, source,
   } catch {}
   await prisma.waMessage.create({
     data: {
-      customerId: customer?.id || null,
+      customer: customer?.id ? { connect: { id: customer.id } } : undefined,
       normalizedPhone: normalized,
       remoteJid: workerData.remote_jid || null,
       waMessageId: workerData.wa_message_id || null,
@@ -314,7 +262,6 @@ async function persistAndSend({ customer, normalized, remote_jid, reply, source,
       aiTokensOut: usage?.out,
       aiCostUsd: usage?.costUsd,
       aiBlocked: !!blocked,
-      aiBlockReason: blockReason || null,
     },
   });
 }

@@ -43,7 +43,7 @@ function Body() {
       <Card className="lg:col-span-3">
         <h2 className="text-sm font-semibold mb-3">Riwayat Appointment</h2>
         {c.appointments.length === 0 ? <p className="text-muted text-sm">Belum ada.</p> : (
-          <ul className="divide-y divide-blush text-sm">
+          <ul className="divide-y divide-border text-sm">
             {c.appointments.map(a => (
               <li key={a.id} className="py-2 flex justify-between">
                 <span>{formatDateTime(a.scheduledAt)} · {a.service?.name} · {a.therapist?.name || '-'}</span>
@@ -76,7 +76,7 @@ function Editable({ c, onSave, onDelete }) {
       <div><label className="text-xs text-muted">Tipe kulit</label><Input value={form.skinType} onChange={e=>set('skinType',e.target.value)} /></div>
       <div><label className="text-xs text-muted">Alergi</label><Input value={form.allergies} onChange={e=>set('allergies',e.target.value)} /></div>
       <div className="md:col-span-2"><label className="text-xs text-muted">Catatan</label><Textarea rows={3} value={form.notes} onChange={e=>set('notes',e.target.value)} /></div>
-      <div className="md:col-span-2 flex gap-2"><Btn>Simpan</Btn><button type="button" onClick={onDelete} className="px-4 py-2 rounded-xl bg-rose-100 text-rose-700 text-sm font-medium">Hapus</button></div>
+      <div className="md:col-span-2 flex gap-2"><Btn>Simpan</Btn><button type="button" onClick={onDelete} className="px-4 py-2 rounded-md bg-rose-100 text-rose-700 text-sm font-medium">Hapus</button></div>
     </form>
   );
 }

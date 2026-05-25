@@ -38,7 +38,8 @@ async function main() {
       aiHandoffKeywords: ['demam','kejang','sesak','muntah','dehidrasi','alergi','luka','infeksi','operasi','komplain','refund','marah','kecewa','tipu'],
       aiAllowedTopics: ['layanan','harga','jadwal','booking','reschedule','cancel','lokasi','pembayaran','terapis','durasi','paket','promo'],
       aiOffTopicReply: 'Maaf, saya hanya bantu seputar layanan & booking Rspa ya. Untuk hal lain, silakan hubungi staff kami langsung.',
-      aiMaxOutputTokens: 280,
+      aiMaxOutputTokens: 4096,
+      minimalDpPercent: 50,
       abuseDailyMsgPerPhone: 30,
       abuseDailyCostPerPhone: 0.05,
       abuseGlobalDailyBudget: 5.0,
@@ -79,9 +80,9 @@ async function main() {
 
   // Sample therapists
   const sampleTherapists = [
-    { name: 'Dewi',  phone: '081200000001', specialization: 'Relaxing & Body Massage' },
-    { name: 'Rina',  phone: '081200000002', specialization: 'Therapeutic & Sports Massage' },
-    { name: 'Sari',  phone: '081200000003', specialization: 'Facial & Skincare' },
+    { name: 'Dewi',  phone: '081200000001', specialties: ['Relaxing', 'Body Massage'] },
+    { name: 'Rina',  phone: '081200000002', specialties: ['Therapeutic', 'Sports Massage'] },
+    { name: 'Sari',  phone: '081200000003', specialties: ['Facial', 'Skincare'] },
   ];
   for (const t of sampleTherapists) {
     const exists = await prisma.therapist.findFirst({ where: { name: t.name } });

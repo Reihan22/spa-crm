@@ -43,8 +43,8 @@ export async function POST(req) {
   }
   let body; try { body = await req.json(); } catch { return jsonError('Invalid JSON', 400); }
   const { customerId, normalizedPhone, reason, triggerKeyword } = body || {};
-  if (!customerId || !normalizedPhone || !reason) return jsonError('customerId, normalizedPhone, reason required', 400);
-  const h = await prisma.handoff.create({ data: { customerId, normalizedPhone, reason, triggerKeyword: triggerKeyword || null } });
+  if (!customerId || !reason) return jsonError('customerId & reason required', 400);
+  const h = await prisma.handoff.create({ data: { customer: { connect: { id: customerId } }, sessionId: `handoff-${Date.now()}`, reason, status: 'pending' } });
   return jsonOk(h, 201);
 }
 
