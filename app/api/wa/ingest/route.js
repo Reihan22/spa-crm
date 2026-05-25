@@ -186,7 +186,6 @@ async function executeQrisIntent({ customer, normalized, remote_jid, qrisRequest
       customer: { connect: { id: customer.id } },
       service: { connect: { id: svc.id } },
       scheduledAt: when,
-      endsAt: ends,
       status: 'pending',
       notes: apptNotes,
     },
