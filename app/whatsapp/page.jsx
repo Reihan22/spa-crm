@@ -5,7 +5,7 @@ import { api, formatDateTime, getToken } from '@/lib/client';
 import {
   Search, Send, Radio, Wifi, WifiOff, RotateCcw, LogOut,
   MessageCircle, Users, DollarSign, BarChart3, Megaphone,
-  RefreshCw, ChevronLeft, X, Trash2, Bot, BotOff,
+  RefreshCw, ChevronLeft, X, Trash2, Bot, BotOff, CheckCircle,
 } from 'lucide-react';
 
 /* ── Helpers ── */
@@ -236,6 +236,22 @@ function Body() {
     finally { setBusy(false); }
   }
 
+  async function doConfirmPay(txnId) {
+    setBusy(true); setErr('');
+    try {
+      await api('/api/wa/confirm-payment', {
+        method: 'PATCH',
+        body: JSON.stringify({ transactionId: txnId }),
+      });
+      // Remove from unpaid list
+      setConvos(prev => prev.map(c => ({
+        ...c,
+        unpaidTxns: (c.unpaidTxns || []).filter(t => t.id !== txnId),
+      })));
+    } catch (e) { setErr(e.message); }
+    finally { setBusy(false); }
+  }
+
   /* ── Filtered convos ── */
   const filtered = searchQ
     ? convos.filter(c =>
@@ -300,6 +316,7 @@ function Body() {
                       )}
                     </div>
                     {c.stats?.blocked && <Badge color="red" className="mt-1">blocked</Badge>}
+                    {c.unpaidTxns?.length > 0 && <Badge color="yellow" className="mt-1">💰 {c.unpaidTxns.length} unpaid</Badge>}
                   </div>
                 </div>
               </li>
@@ -352,6 +369,37 @@ function Body() {
                   </button>
                 </div>
               </div>
+
+              {/* Unpaid transactions banner */}
+              {(() => {
+                const activeConvo = convos.find(c => c.phone === activePhone);
+                const unpaid = activeConvo?.unpaidTxns || [];
+                if (!unpaid.length) return null;
+                return (
+                  <div className="mx-4 mt-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <DollarSign className="w-4 h-4 text-amber-600" />
+                      <span className="text-xs font-semibold text-amber-700">Belum Dibayar</span>
+                    </div>
+                    {unpaid.map(txn => (
+                      <div key={txn.id} className="flex items-center justify-between gap-2 py-1">
+                        <span className="text-xs text-amber-800">
+                          Rp {Number(txn.total).toLocaleString('id-ID')}
+                          <span className="text-amber-500 ml-1">({new Date(txn.createdAt).toLocaleDateString('id-ID')})</span>
+                        </span>
+                        <button
+                          onClick={() => doConfirmPay(txn.id)}
+                          disabled={busy}
+                          className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition"
+                        >
+                          <CheckCircle className="w-3 h-3" />
+                          Konfirmasi Bayar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-surface/20">

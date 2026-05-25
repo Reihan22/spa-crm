@@ -54,6 +54,16 @@ export async function GET(req) {
         ...(customer?.lastReadAt ? { sentAt: { gt: customer.lastReadAt } } : {}),
       },
     });
+    // Unpaid transactions for this customer
+    let unpaidTxns = [];
+    if (customer?.id) {
+      unpaidTxns = await prisma.transaction.findMany({
+        where: { status: 'unpaid', appointment: { customerId: customer.id } },
+        select: { id: true, total: true, createdAt: true, midtransOrderId: true },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+      });
+    }
     return {
       phone: row.normalizedPhone,
       customer,
@@ -65,6 +75,7 @@ export async function GET(req) {
         blocked: row.blocked_count > 0,
       },
       unread,
+      unpaidTxns,
     };
   }));
 
