@@ -184,7 +184,7 @@ async function executeQrisIntent({ customer, normalized, remote_jid, qrisRequest
   const appt = await prisma.appointment.create({
     data: {
       customer: { connect: { id: customer.id } },
-      serviceId: svc.id,
+      service: { connect: { id: svc.id } },
       scheduledAt: when,
       endsAt: ends,
       status: 'pending',
