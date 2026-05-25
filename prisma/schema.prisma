@@ -265,6 +265,7 @@ model Settings {
   waNumber                    String?
   logoUrl                     String?
   qrisImageUrl                String?
+  qrisPayload                 String?  @db.Text
   bookingPaymentInstructions  String?  @db.Text
   pendingPaymentExpiryMinutes Int      @default(120)
   minimalDpPercent            Int      @default(50)

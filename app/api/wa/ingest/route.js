@@ -106,7 +106,7 @@ export async function POST(req) {
     } else if (!qrisRequest.scheduled_at) {
       reply = `Untuk ${qrisRequest.service_name}, kapan jadwalnya kak? (tanggal & jam)`;
     } else {
-      const qrisOutcome = await executeQrisIntent({ customer, normalized, remote_jid, qrisRequest, services });
+      const qrisOutcome = await executeQrisIntent({ customer, normalized, remote_jid, qrisRequest, services, settings });
       if (qrisOutcome.reply) reply = qrisOutcome.reply;
       alreadySent = true;
       // Persist outbound log without re-sending
@@ -153,7 +153,11 @@ export async function POST(req) {
 }
 
 // Build QRIS for the agent: validate service, create appointment+transaction, charge, send QR via WA.
-async function executeQrisIntent({ customer, normalized, remote_jid, qrisRequest, services }) {
+// If qrisPayload stored → generate dynamic QR locally (no Midtrans). Otherwise fallback to Midtrans.
+import { toDynamic } from '@/lib/qris';
+import QRCode from 'qrcode';
+
+async function executeQrisIntent({ customer, normalized, remote_jid, qrisRequest, services, settings }) {
   const wanted = (qrisRequest.service_name || '').toLowerCase();
   const svc = services.find(s => s.name.toLowerCase() === wanted)
     || services.find(s => s.name.toLowerCase().includes(wanted))
@@ -196,7 +200,29 @@ async function executeQrisIntent({ customer, normalized, remote_jid, qrisRequest
       status: 'unpaid',
     },
   });
-  // Charge Midtrans
+
+  const fmt = when.toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Asia/Jakarta' });
+  const total = Number(totalPrice).toLocaleString('id-ID');
+  const partyLine = partySize > 1 ? `\nJumlah orang: ${partySize} (Rp ${Number(svc.price).toLocaleString('id-ID')} × ${partySize})` : '';
+
+  // ── Dynamic QRIS (local, no Midtrans) ──
+  if (settings?.qrisPayload) {
+    try {
+      const dynamicPayload = toDynamic(settings.qrisPayload, totalPrice);
+      const qrBuffer = await QRCode.toBuffer(dynamicPayload, {
+        type: 'png', width: 512, margin: 2, errorCorrectionLevel: 'M',
+      });
+      // Send QR as image via worker
+      const text = `Booking dicatat ✅\nLayanan: ${svc.name}${partyLine}\nJadwal: ${fmt}\nTotal: Rp ${total}\n\nSilakan scan QRIS di atas untuk membayar.\nBerlaku 15 menit. Setelah dibayar, kakak akan dapat konfirmasi otomatis.`;
+      await sendImageDirect(normalized, remote_jid, qrBuffer, text);
+      return { reply: text };
+    } catch (e) {
+      console.error('Dynamic QRIS generate failed, fallback to Midtrans:', e);
+      // fall through to Midtrans
+    }
+  }
+
+  // ── Midtrans fallback ──
   let charge;
   try {
     const { chargeQris } = await import('@/lib/midtrans');
@@ -218,10 +244,6 @@ async function executeQrisIntent({ customer, normalized, remote_jid, qrisRequest
     await sendDirect(normalized, remote_jid, m);
     return { reply: m };
   }
-  // Send confirmation + QR image link
-  const fmt = when.toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Asia/Jakarta' });
-  const total = Number(totalPrice).toLocaleString('id-ID');
-  const partyLine = partySize > 1 ? `\nJumlah orang: ${partySize} (Rp ${Number(svc.price).toLocaleString('id-ID')} × ${partySize})` : '';
   const text = `Booking dicatat ✅\nLayanan: ${svc.name}${partyLine}\nJadwal: ${fmt}\nTotal: Rp ${total}\n\nSilakan bayar via QRIS:\n${charge.qrUrl}\n\nBerlaku 15 menit. Setelah dibayar, kakak akan dapat konfirmasi otomatis.`;
   await sendDirect(normalized, remote_jid, text);
   return { reply: text };
@@ -233,6 +255,21 @@ async function sendDirect(phone, remote_jid, content) {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-worker-token': WORKER_TOKEN },
       body: JSON.stringify({ phone, content, remote_jid: remote_jid || null }),
+    });
+  } catch {}
+}
+
+async function sendImageDirect(phone, remote_jid, imageBuffer, caption) {
+  try {
+    await fetch(WORKER_BASE + '/send-image', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-worker-token': WORKER_TOKEN },
+      body: JSON.stringify({
+        phone,
+        remote_jid: remote_jid || null,
+        image: imageBuffer.toString('base64'),
+        caption: caption || '',
+      }),
     });
   } catch {}
 }

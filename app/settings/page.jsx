@@ -69,8 +69,20 @@ function SettingsForm({ tab }) {
           <Field label="Alamat" className="md:col-span-2"><Input value={s.address || ''} onChange={e => set('address', e.target.value)} /></Field>
         </div>
         <div className="border-t border-border" />
+
+        {/* ── QRIS DYNAMIC ── */}
+        <section>
+          <h3 className="text-xs font-semibold text-ink uppercase tracking-wide mb-1 flex items-center gap-2">
+            <div className="w-5 h-5 rounded-lg bg-surface grid place-items-center"><span className="text-[10px]">📱</span></div>
+            QRIS Dynamic
+          </h3>
+          <p className="text-[11px] text-muted mb-3">Upload QRIS statis merchant — sistem auto-convert ke QR dinamis per transaksi dengan nominal pas.</p>
+          <QrisUploader />
+        </section>
+
+        <div className="border-t border-border" />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="URL QRIS" hint="Gambar QR statis (opsional kalau pakai Midtrans)"><Input value={s.qrisImageUrl || ''} onChange={e => set('qrisImageUrl', e.target.value)} /></Field>
           <Field label="Expiry DP (menit)" hint="Berapa menit booking menunggu pembayaran"><Input type="number" value={s.pendingPaymentExpiryMinutes || 0} onChange={e => set('pendingPaymentExpiryMinutes', +e.target.value)} /></Field>
           <Field label="Minimal DP (%)" hint="Persentase minimal dari harga layanan yang harus dibayar sebagai DP (default 50%)">
             <Input type="number" min="1" max="100" value={s.minimalDpPercent || 50} onChange={e => set('minimalDpPercent', +e.target.value)} className="max-w-[160px]" />
@@ -185,6 +197,76 @@ function SettingsForm({ tab }) {
       </div>
     </div>
   </Card>;
+}
+
+/* ── QRIS Uploader: upload image or paste payload ── */
+function QrisUploader() {
+  const [info, setInfo] = useState(null), [busy, setBusy] = useState(false), [msg, setMsg] = useState(''), [drag, setDrag] = useState(false);
+  const fileRef = { current: null };
+
+  useEffect(() => { (async () => { try { const r = await api('/api/qris/upload'); setInfo(r.info); } catch {} })(); }, []);
+
+  async function handleFile(file) {
+    if (!file) return;
+    setBusy(true); setMsg('');
+    try {
+      const fd = new FormData(); fd.append('file', file);
+      const r = await api('/api/qris/upload', { method: 'POST', body: fd });
+      setInfo(r.info); setMsg('✅ QRIS berhasil di-upload');
+    } catch (e) { setMsg('❌ ' + e.message); }
+    finally { setBusy(false); }
+  }
+
+  async function handlePaste(e) {
+    const text = e.clipboardData?.getData('text')?.trim();
+    if (!text || text.length < 20) return;
+    e.preventDefault();
+    setBusy(true); setMsg('');
+    try {
+      const r = await api('/api/qris/upload', { method: 'POST', body: JSON.stringify({ payload: text }) });
+      setInfo(r.info); setMsg('✅ QRIS payload tersimpan');
+    } catch (e) { setMsg('❌ ' + e.message); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Drop zone */}
+      <div
+        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition ${drag ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+        onClick={() => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = e => handleFile(e.target.files[0]); inp.click(); }}
+        onDragOver={e => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={e => { e.preventDefault(); setDrag(false); handleFile(e.dataTransfer.files[0]); }}
+        onPaste={handlePaste}
+        tabIndex={0}
+      >
+        {busy
+          ? <p className="text-sm text-muted animate-pulse">Memproses…</p>
+          : <div>
+              <p className="text-sm text-ink font-medium">Upload gambar QRIS / paste payload</p>
+              <p className="text-xs text-muted mt-1">Drag & drop gambar, klik untuk pilih, atau paste teks QRIS</p>
+            </div>
+        }
+      </div>
+
+      {msg && <p className={`text-xs ${msg.startsWith('✅') ? 'text-emerald-600' : 'text-rose-600'}`}>{msg}</p>}
+
+      {/* Current QRIS info */}
+      {info && (
+        <div className="bg-surface/60 border border-border rounded-md p-3 text-xs space-y-1">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="font-medium text-ink">QRIS Aktif</span>
+            {info.isDynamic && <Badge>Dynamic</Badge>}
+          </div>
+          {info.merchantName && <p><span className="text-muted">Merchant:</span> {info.merchantName}</p>}
+          {info.merchantCity && <p><span className="text-muted">Kota:</span> {info.merchantCity}</p>}
+          {info.amount && <p><span className="text-muted">Nominal asli:</span> Rp{Number(info.amount).toLocaleString('id')}</p>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function UsersTab() {
