@@ -1,14 +1,21 @@
 // GET /api/wa/stream — SSE endpoint for real-time updates
 // Polls DB every 2s for new messages since last seen timestamp.
+// EventSource can't set headers, so we also accept ?token= query param.
 import { prisma } from '@/lib/db';
-import { requireAuth } from '@/lib/auth';
+import { verifyToken } from '@/lib/auth';
 
 export async function GET(req) {
-  const a = requireAuth(req); if (a instanceof Response) return a;
+  // Accept Bearer header OR ?token= query param (EventSource limitation)
+  const authHeader = req.headers.get('authorization') || '';
+  const urlToken = new URL(req.url).searchParams.get('token') || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : urlToken;
+  const payload = verifyToken(token);
+  if (!payload) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'content-type': 'application/json' } });
 
   const encoder = new TextEncoder();
   let interval;
-  let lastSentAt = new Date().toISOString();
+  // Use a slightly older timestamp to avoid missing messages during connection setup
+  let lastSentAt = new Date(Date.now() - 3000).toISOString();
   let closed = false;
 
   const stream = new ReadableStream({

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AuthGuard, Shell, Card, Btn, Input, Badge } from '@/components/Shell';
-import { api, formatDateTime } from '@/lib/client';
+import { api, formatDateTime, getToken } from '@/lib/client';
 import {
   Search, Send, Radio, Wifi, WifiOff, RotateCcw, LogOut,
   MessageCircle, Users, DollarSign, BarChart3, Megaphone,
@@ -67,7 +67,7 @@ function Body() {
   /* ── SSE real-time ── */
   const startSSE = useCallback(function startSSE() {
     if (esRef.current) esRef.current.close();
-    const es = new EventSource('/api/wa/stream');
+    const es = new EventSource(`/api/wa/stream?token=${encodeURIComponent(getToken() || '')}`);
     sseClosedRef.current = false;
     es.onmessage = (e) => {
       try {
